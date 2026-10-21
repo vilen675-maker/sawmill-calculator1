@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111820">
+  <title>Калькулятор распила бревна</title>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111820;
+      --panel: #1b2632;
+      --panel2: #243342;
+      --border: #394a5a;
+      --text: #f3f6f9;
+      --muted: #aebdca;
+      --accent: #f2b544;
+      --green: #36d399;
+      --blue: #55aaff;
+      --red: #ff665f;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: max(12px, env(safe-area-inset-top))
+               max(12px, env(safe-area-inset-right))
+               max(28px, env(safe-area-inset-bottom))
+               max(12px, env(safe-area-inset-left));
+      background: radial-gradient(ellipse at top, #1c2a37, var(--bg) 60%);
+      color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select { font: inherit; }
+
+    button {
+      min-height: 52px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel2);
+      color: var(--text);
+      font-weight: 750;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:active { transform: translateY(1px); }
+
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    input, select {
+      width: 100%;
+      min-width: 0;
+      min-height: 54px;
+      padding: 11px 13px;
+      border: 1px solid #526779;
+      border-radius: 10px;
+      background: #101820;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: clamp(25px, 4vw, 36px); line-height: 1.15; margin-bottom: 8px; }
+    h2 { font-size: 21px; margin-bottom: 16px; }
+    h3 { font-size: 16px; margin-bottom: 8px; }
+    .muted { color: var(--muted); }
+    .app { max-width: 1500px; margin: auto; }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin: 8px 0 24px;
+    }
+
+    .header p { margin-bottom: 0; color: var(--muted); }
+
+    .offline {
+      padding: 8px 12px;
+      border: 1px solid #316a55;
+      border-radius: 999px;
+      background: #17372e;
+      color: #9df2cb;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(290px, 380px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .left, .right { display: grid; gap: 18px; min-width: 0; }
+
+    .panel {
+      padding: 20px;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, #1d2935, #18222c);
+      box-shadow: 0 12px 30px #00000020;
+    }
+
+    .fields { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    .field { display: grid; gap: 6px; }
+    .field label { font-size: 14px; font-weight: 750; color: #e1e8ef; }
+    .field small { color: var(--muted); font-size: 12px; }
+
+    .unit-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .unit-button { flex: 1; }
+    .unit-button.active { background: var(--accent); color: #241b0b; border-color: var(--accent); }
+
+    .button-row { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+    .button-row button { flex: 1; }
+    .primary { background: var(--accent); color: #241b0b; border-color: var(--accent); }
+    .green-button { background: #1d5b47; border-color: #36886b; }
+    .danger-button { background: #482725; border-color: #854744; }
+
+    .error, .notice {
+      display: none;
+      margin-top: 13px;
+      padding: 12px;
+      border-radius: 9px;
+      font-size: 14px;
+    }
+
+    .error { background: #412725; border: 1px solid #994b48; color: #ffb5b0; }
+    .notice { background: #17372e; border: 1px solid #316a55; color: #9df2cb; }
+    .error.visible, .notice.visible { display: block; }
+
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .metric { min-width: 0; padding: 13px; border: 1px solid var(--border); border-radius: 11px; background: #131d26; }
+    .metric-label { min-height: 38px; color: var(--muted); font-size: 12px; }
+    .metric-value { overflow-wrap: anywhere; font-size: clamp(21px, 3vw, 29px); font-weight: 850; line-height: 1.2; }
+    .metric-unit { margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .green { color: var(--green); }
+    .blue { color: var(--blue); }
+    .orange { color: var(--accent); }
+
+    .canvas-wrap {
+      overflow: hidden;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: #111a22;
+    }
+
+    canvas { display: block; width: 100%; height: 370px; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 13px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+    .legend-color { width: 12px; height: 12px; border-radius: 3px; }
+
+    .table-scroll { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+    table { width: 100%; min-width: 650px; border-collapse: collapse; background: #151f28; }
+    th, td { padding: 12px; border-bottom: 1px solid #2b3946; text-align: left; vertical-align: middle; }
+    th { background: #263543; color: #e4edf5; font-size: 12px; }
+    td { font-size: 13px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .board-action { color: var(--green); font-weight: 750; }
+    .waste-action { color: var(--red); font-weight: 750; }
+
+    .history-list { display: grid; gap: 10px; }
+    .history-item { padding: 13px; border: 1px solid var(--border); border-radius: 10px; background: #131d26; }
+    .history-item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .history-item strong { display: block; }
+    .history-item small { display: block; color: var(--muted); margin-top: 3px; }
+    .history-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .history-actions button { min-height: 42px; padding: 8px 12px; font-size: 13px; }
+    .empty-history { color: var(--muted); padding: 8px 0; }
+
+    .formula-note {
+      margin-top: 15px;
+      padding: 13px;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      background: #25271f;
+      color: #dedecf;
+      font-size: 13px;
+    }
+
+    .footer { margin-top: 22px; color: #8fa0ae; font-size: 12px; text-align: center; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      canvas { height: 340px; }
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 11px; }
+      .panel { padding: 15px; }
+      .fields, .metrics { grid-template-columns: 1fr; }
+      .metric { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+      .metric-label { min-height: 0; }
+      .metric-value { text-align: right; }
+      .metric-unit { grid-column: 1 / -1; margin-top: -5px; }
+      .button-row button { min-height: 55px; padding: 10px; }
+      canvas { height: 310px; }
+    }
+
+    /* Печатная версия используется для сохранения плана в PDF. */
+    @media print {
+      @page { size: A4 portrait; margin: 12mm; }
+
+      :root { color-scheme: light; }
+
+      body {
+        padding: 0;
+        background: white !important;
+        color: #111 !important;
+        font-size: 10pt;
+      }
+
+      .app { max-width: none; }
+      .layout { display: block; }
+      .left, .right { display: block; }
+      .panel {
+        margin-bottom: 12px;
+        padding: 12px;
+        border: 1px solid #999;
+        background: white !important;
+        box-shadow: none;
+        break-inside: avoid;
+      }
+
+      h1, h2, h3, p, label, td, th, strong, .muted,
+      .metric-label, .metric-value, .metric-unit, .legend-item,
+      .history-item small, .formula-note {
+        color: #111 !important;
+      }
+
+      .header { margin: 0 0 12px; }
+      .offline, .unit-row, .button-row, .error, .notice,
+      #historyPanel, .footer, .history-actions { display: none !important; }
+      .fields { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      input, select { min-height: 0; padding: 4px; color: #111; background: white; border-color: #aaa; font-size: 10pt; }
+      .metrics { grid-template-columns: repeat(3, 1fr); }
+      .metric, .summary-item { background: white !important; border-color: #aaa; }
+      .metric-value { font-size: 18pt; }
+      .canvas-wrap { background: white !important; }
+      canvas { height: 280px; max-height: 280px; }
+      table { min-width: 0; background: white !important; }
+      th, td { padding: 6px; color: #111 !important; border-color: #bbb; }
+      th { background: #eee !important; }
+      .formula-note { background: #f5f5f5 !important; }
+      .legend { gap: 8px; }
+      .left { break-after: page; }
+      .right { break-before: auto; }
+    }
+  </style>
+</head>
+
+<body>
+<main class="app">
+  <header class="header">
+    <div>
+      <h1>Калькулятор распила бревна</h1>
+      <p>Ленточная пилорама · индивидуальная толщина досок · история расчётов</p>
+    </div>
+    <span class="offline">Работает офлайн</span>
+  </header>
+
+  <div class="layout">
+    <aside class="left">
+      <section class="panel">
+        <h2>Параметры бревна</h2>
+
+        <div class="unit-row" aria-label="Единицы измерения">
+          <button class="unit-button active" id="unitMm" type="button">Миллиметры</button>
+          <button class="unit-button" id="unitIn" type="button">Дюймы</button>
+        </div>
+
+        <form id="calculatorForm" novalidate>
+          <div class="fields">
+            <div class="field">
+              <label for="diameter">Диаметр бревна</label>
+              <input id="diameter" type="number" min="1" step="any" value="400" required>
+              <small class="unit-label">мм</small>
+            </div>
+
+            <div class="field">
+              <label for="logLength">Длина бревна</label>
+              <input id="logLength" type="number" min="0.1" max="30" step="any" value="4" required>
+              <small>Метры</small>
+            </div>
+
+            <div class="field">
+              <label for="kerf">Толщина пропила (kerf)</label>
+              <input id="kerf" type="number" min="0" step="any" value="2" required>
+              <small class="unit-label">мм</small>
+            </div>
+
+            <div class="field">
+              <label for="dryAllowance">Припуск на усушку</label>
+              <input id="dryAllowance" type="number" min="0" step="any" value="2" required>
+              <small class="unit-label">мм</small>
+            </div>
+
+            <div class="field">
+              <label for="bark">Толщина коры</label>
+              <input id="bark" type="number" min="0" step="any" value="10" required>
+              <small class="unit-label">мм</small>
+            </div>
+
+            <div class="field">
+              <label for="defaultThickness">Толщина по умолчанию</label>
+              <input id="defaultThickness" type="number" min="0.1" step="any" value="25" required>
+              <small class="unit-label">мм</small>
+            </div>
+
+            <div class="field" style="grid-column: 1 / -1;">
+              <label for="boardList">Толщина каждой доски по порядку</label>
+              <input id="boardList" type="text" value="25, 25, 25, 25, 25"
+                autocomplete="off" spellcheck="false">
+              <small id="boardListHint">
+                Введите значения через запятую, например: 25, 25, 40, 50, 25.
+                Если список закончится, будет использована толщина по умолчанию.
+              </small>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button class="primary" type="submit">Рассчитать</button>
+            <button id="resetButton" type="button">Сбросить</button>
+          </div>
+
+          <div id="errorBox" class="error" role="alert"></div>
+          <div id="noticeBox" class="notice" role="status"></div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Итоги</h2>
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-label">Количество досок</div>
+            <div class="metric-value green" id="boardCount">—</div>
+            <div class="metric-unit">шт.</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Полезный объём</div>
+            <div class="metric-value blue" id="usefulVolume">—</div>
+            <div class="metric-unit">м³, оценка</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Выход по объёму</div>
+            <div class="metric-value orange" id="yieldPercent">—</div>
+            <div class="metric-unit">от объёма цилиндра</div>
+          </div>
+        </div>
+
+        <div class="formula-note">
+          <strong>Модель расчёта.</strong>
+          Первый пропил: кора + 5 мм. Для каждой следующей доски высота
+          увеличивается на её толщину + усушка + kerf. Ширина доски
+          оценивается по хорде круглого сечения. Геометрическая оценка
+          не учитывает конусность, кривизну и дефекты бревна.
+        </div>
+
+        <div class="button-row">
+          <button class="primary" id="exportPdf" type="button">Экспорт плана в PDF</button>
+          <button class="green-button" id="saveHistory" type="button">Сохранить в историю</button>
+        </div>
+      </section>
+    </aside>
+
+    <div class="right">
+      <section class="panel">
+        <h2>Схема распила</h2>
+        <div class="canvas-wrap">
+          <canvas id="cutCanvas" aria-label="Схема распила бревна">
+            Ваш браузер не поддерживает Canvas.
+          </canvas>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><i class="legend-color" style="background:#36d399"></i>Доски</span>
+          <span class="legend-item"><i class="legend-color" style="background:#55aaff"></i>Линии рабочих пропилов</span>
+          <span class="legend-item"><i class="legend-color" style="background:#ff665f"></i>Вскрытие / отходы</span>
+          <span class="legend-item"><i class="legend-color" style="background:#8d5839"></i>Кора</span>
+        </div>
+        <p class="muted" style="font-size:12px;margin:12px 0 0;">
+          Высоты на схеме отсчитываются от нижней точки исходного круга.
+          Цвета являются условной визуализацией раскроя.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>План пропилов</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Пропил №</th>
+                <th>Действие</th>
+                <th>Высота линейки</th>
+                <th>Толщина доски</th>
+                <th>Расчётная ширина</th>
+              </tr>
+            </thead>
+            <tbody id="stepsBody">
+              <tr><td colspan="5">Выполняется расчёт…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="historyPanel">
+        <h2>История расчётов</h2>
+        <p class="muted" style="font-size:13px;">
+          История хранится в LocalStorage этого браузера на этом устройстве.
+          Она не синхронизируется между устройствами и может быть удалена
+          при очистке данных сайта или браузера.
+        </p>
+        <div class="button-row" style="margin-top:0;margin-bottom:14px;">
+          <button id="refreshHistory" type="button">Обновить историю</button>
+          <button id="clearHistory" class="danger-button" type="button">Удалить всю историю</button>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="footer">
+    Автономное приложение · Нет внешних библиотек · Расчёты выполняются локально
+  </footer>
+</main>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Константы и состояние
+   ============================================================ */
+
+const $ = (id) => document.getElementById(id);
+const INCH_MM = 25.4;
+const HISTORY_KEY = "sawmillCalculatorHistory_v1";
+const HISTORY_LIMIT = 50;
+
+const DEFAULTS = {
+  diameter: 400,
+  logLength: 4,
+  kerf: 2,
+  dryAllowance: 2,
+  bark: 10,
+  defaultThickness: 25,
+  boardList: "25, 25, 25, 25, 25"
+};
+
+const COLORS = {
+  bark: "#8d5839",
+  barkLight: "#b57a51",
+  wood: "#36d399",
+  woodAlt: "#55aaff",
+  saw: "#d8e7f4",
+  waste: "#ff665f",
+  text: "#f3f6f9",
+  muted: "#aebdca",
+  dimension: "#f2b544",
+  background: "#111a22"
+};
+
+let currentUnit = "mm";
+let lastResult = null;
+let lastValues = null;
+let lastSavedSignature = "";
+
+function fmt(value, digits = 2) {
+  if (!Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat("ru-RU", {
+    maximumFractionDigits: digits
+  }).format(value);
+}
+
+function fmtInteger(value) {
+  return new Intl.NumberFormat("ru-RU", {
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
+function toMillimeters(value) {
+  return currentUnit === "in" ? value * INCH_MM : value;
+}
+
+function fromMillimeters(value) {
+  return currentUnit === "in" ? value / INCH_MM : value;
+}
+
+function unitSuffix() {
+  return currentUnit === "in" ? "дюйм" : "мм";
+}
+
+function readDisplayedValues() {
+  return {
+    diameter: Number($("diameter").value),
+    logLength: Number($("logLength").value),
+    kerf: Number($("kerf").value),
+    dryAllowance: Number($("dryAllowance").value),
+    bark: Number($("bark").value),
+    defaultThickness: Number($("defaultThickness").value),
+    boardList: $("boardList").value.trim()
+  };
+}
+
+/*
+ * Перевод всех линейных параметров в миллиметры.
+ * Длина бревна остаётся в метрах.
+ */
+function normalizeValues(displayed) {
+  return {
+    diameter: toMillimeters(displayed.diameter),
+    logLength: displayed.logLength,
+    kerf: toMillimeters(displayed.kerf),
+    dryAllowance: toMillimeters(displayed.dryAllowance),
+    bark: toMillimeters(displayed.bark),
+    defaultThickness: toMillimeters(displayed.defaultThickness),
+    boardList: displayed.boardList
+  };
+}
+
+function parseBoardList(listText, defaultThickness) {
+  if (!listText.trim()) return [];
+
+  const parts = listText.split(/[;,]+/);
+  const result = [];
+
+  for (const part of parts) {
+    const value = Number(part.trim().replace(",", "."));
+
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new Error(
+        "В списке толщин каждая доска должна иметь положительное числовое значение."
+      );
+    }
+
+    result.push(toMillimeters(value));
+  }
+
+  return result;
+}
+
+function validateValues(v) {
+  const displayed = readDisplayedValues();
+
+  const required = [
+    ["diameter", "Диаметр"],
+    ["logLength", "Длина"],
+    ["kerf", "Kerf"],
+    ["dryAllowance", "Усушка"],
+    ["bark", "Кора"],
+    ["defaultThickness", "Толщина по умолчанию"]
+  ];
+
+  for (const [key, label] of required) {
+    if (!Number.isFinite(displayed[key])) {
+      return `Проверьте поле «${label}»: требуется число.`;
+    }
+  }
+
+  if (v.diameter < 50 || v.diameter > 3000) {
+    return "Диаметр должен быть в диапазоне 50–3000 мм.";
+  }
+
+  if (v.logLength <= 0 || v.logLength > 30) {
+    return "Длина должна быть больше 0 и не превышать 30 м.";
+  }
+
+  if (v.kerf < 0 || v.kerf > 20) {
+    return "Kerf должен быть в диапазоне 0–20 мм.";
+  }
+
+  if (v.dryAllowance < 0 || v.dryAllowance > 50) {
+    return "Припуск на усушку должен быть в диапазоне 0–50 мм.";
+  }
+
+  if (v.bark < 0 || v.bark > 100) {
+    return "Толщина коры должна быть в диапазоне 0–100 мм.";
+  }
+
+  if (v.defaultThickness <= 0 || v.defaultThickness > 200) {
+    return "Толщина по умолчанию должна быть больше 0 и не превышать 200 мм.";
+  }
+
+  if (v.bark * 2 >= v.diameter) {
+    return "Толщина коры слишком велика относительно диаметра.";
+  }
+
+  try {
+    parseBoardList(v.boardList, v.defaultThickness);
+  } catch (error) {
+    return error.message;
+  }
+
+  return "";
+}
+
+/* ============================================================
+   Математический движок
+
+   Первая операция:
+     H1 = bark + 5 мм
+
+   Последующая доска i:
+     H(i) = H(i-1) + thickness(i) + shrink + kerf
+
+   Условие остановки:
+     H(i) <= diameter - bark
+
+   Если список досок закончился, применяется defaultThickness.
+
+   Ширина доски оценивается по хорде круглого сечения на середине
+   полосы доски. Объём = ширина * толщина * длина.
+   ============================================================ */
+
+function chordWidthAtHeight(heightMm, diameterMm) {
+  const radius = diameterMm / 2;
+  const offset = heightMm - radius;
+  const square = radius * radius - offset * offset;
+
+  return square > 0 ? 2 * Math.sqrt(square) : 0;
+}
+
+function calculate(v) {
+  const customThicknesses = parseBoardList(
+    v.boardList,
+    v.defaultThickness
+  );
+
+  const firstCutHeight = v.bark + 5;
+  const maxHeight = v.diameter - v.bark;
+
+  const cuts = [{
+    number: 1,
+    height: firstCutHeight,
+    action: "Вскрышной пропил",
+    type: "waste",
+    thickness: 0,
+    width: 0,
+    notExecuted: false
+  }];
+
+  const boards = [];
+  let previousHeight = firstCutHeight;
+  let index = 0;
+  let cutNumber = 2;
+  const maxIterations = 1000;
+
+  while (index < maxIterations) {
+    const thickness = customThicknesses[index] ?? v.defaultThickness;
+
+    // Каждый следующий шаг состоит из толщины доски, усушки и kerf.
+    const nextHeight = previousHeight + thickness +
+      v.dryAllowance + v.kerf;
+
+    // Не включаем доску, если её верхний пропил выходит за границу.
+    if (nextHeight > maxHeight) break;
+
+    // Центр полосы доски между предыдущей и текущей линией реза.
+    const bandCenter = previousHeight + thickness / 2;
+    const width = chordWidthAtHeight(bandCenter, v.diameter);
+
+    if (width <= 0) break;
+
+    const board = {
+      number: boards.length + 1,
+      cutNumber,
+      height: nextHeight,
+      lowerHeight: previousHeight,
+      centerHeight: bandCenter,
+      thickness,
+      width
+    };
+
+    boards.push(board);
+
+    cuts.push({
+      number: cutNumber,
+      height: nextHeight,
+      action: `Доска №${board.number}`,
+      type: "board",
+      thickness,
+      width,
+      notExecuted: false
+    });
+
+    previousHeight = nextHeight;
+    cutNumber++;
+    index++;
+  }
+
+  // Добавляем справочную запись, если следующая доска не помещается.
+  const nextThickness = customThicknesses[index] ?? v.defaultThickness;
+  const nextHeight = previousHeight + nextThickness +
+    v.dryAllowance + v.kerf;
+
+  if (nextHeight > maxHeight) {
+    cuts.push({
+      number: cutNumber,
+      height: nextHeight,
+      action: "Остановка: следующая доска не помещается",
+      type: "waste",
+      thickness: 0,
+      width: 0,
+      notExecuted: true
+    });
+  }
+
+  /*
+   * Объём полезных досок:
+   * V = Σ(width_i * thickness_i * length_mm) / 1e9.
+   * Делитель 1 000 000 000 переводит мм³ в м³.
+   */
+  const lengthMm = v.logLength * 1000;
+  const usefulVolume = boards.reduce((sum, board) => {
+    return sum + board.width * board.thickness * lengthMm / 1e9;
+  }, 0);
+
+  // Приближённый объём исходного цилиндра.
+  const logVolume = Math.PI * Math.pow(v.diameter / 2000, 2) * v.logLength;
+
+  const yieldPercent = logVolume > 0
+    ? Math.min(100, usefulVolume / logVolume * 100)
+    : 0;
+
+  return {
+    diameter: v.diameter,
+    length: v.logLength,
+    kerf: v.kerf,
+    bark: v.bark,
+    shrink: v.dryAllowance,
+    defaultThickness: v.defaultThickness,
+    boardList: v.boardList,
+    firstCutHeight,
+    maxHeight,
+    cuts,
+    boards,
+    usefulVolume,
+    logVolume,
+    yieldPercent,
+    wastePercent: Math.max(0, 100 - yieldPercent)
+  };
+}
+
+/* ============================================================
+   Рендеринг результатов
+   ============================================================ */
+
+function showError(message) {
+  $("errorBox").textContent = message;
+  $("errorBox").classList.toggle("visible", Boolean(message));
+}
+
+function showNotice(message) {
+  $("noticeBox").textContent = message;
+  $("noticeBox").classList.toggle("visible", Boolean(message));
+}
+
+function renderMetrics(result) {
+  $("boardCount").textContent = fmtInteger(result.boards.length);
+  $("usefulVolume").textContent = fmt(result.usefulVolume, 4);
+  $("yieldPercent").textContent = `${fmt(result.yieldPercent, 1)}%`;
+}
+
+function renderTable(result) {
+  const tbody = $("stepsBody");
+  tbody.replaceChildren();
+
+  for (const cut of result.cuts) {
+    const row = document.createElement("tr");
+
+    const number = document.createElement("td");
+    number.textContent = String(cut.number);
+
+    const action = document.createElement("td");
+    action.textContent = cut.action;
+    action.className = cut.type === "board" ? "board-action" : "waste-action";
+
+    if (cut.notExecuted) {
+      action.textContent = "Остановка: следующий рез не помещается";
+    }
+
+    const height = document.createElement("td");
+    height.textContent = `${fmt(fromMillimeters(cut.height), 3)} ${unitSuffix()}`;
+
+    const thickness = document.createElement("td");
+    thickness.textContent = cut.type === "board"
+      ? `${fmt(fromMillimeters(cut.thickness), 3)} ${unitSuffix()}`
+      : "—";
+
+    const width = document.createElement("td");
+    width.textContent = cut.type === "board"
+      ? `${fmt(fromMillimeters(cut.width), 2)} ${unitSuffix()}`
+      : "—";
+
+    row.append(number, action, height, thickness, width);
+    tbody.appendChild(row);
+  }
+
+  const total = document.createElement("tr");
+  total.style.background = "#243342";
+
+  const totalLabel = document.createElement("td");
+  totalLabel.colSpan = 2;
+  totalLabel.textContent = "ИТОГО";
+  totalLabel.style.fontWeight = "850";
+
+  const totalHeight = document.createElement("td");
+  totalHeight.textContent = `${result.boards.length} досок`;
+
+  const totalThickness = document.createElement("td");
+  totalThickness.textContent = `${fmt(result.usefulVolume, 4)} м³`;
+
+  const totalWidth = document.createElement("td");
+  totalWidth.textContent = `Выход ${fmt(result.yieldPercent, 1)}%`;
+
+  total.append(totalLabel, totalHeight, totalThickness, totalWidth);
+  tbody.appendChild(total);
+}
+
+/* ============================================================
+   Canvas-визуализация
+   ============================================================ */
+
+function resizeCanvas() {
+  const canvas = $("cutCanvas");
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function drawText(ctx, text, x, y, color, align = "left", size = 12) {
+  ctx.fillStyle = color;
+  ctx.font = `700 ${size}px system-ui, sans-serif`;
+  ctx.textAlign = align;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y);
+}
+
+function renderCanvas(result) {
+  const canvas = $("cutCanvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  resizeCanvas();
+
+  const rect = canvas.getBoundingClientRect();
+  const width = rect.width;
+  const height = rect.height;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = COLORS.background;
+  ctx.fillRect(0, 0, width, height);
+
+  const D = result.diameter;
+  const R = D / 2;
+
+  const leftSpace = width < 420 ? 65 : 90;
+  const rightSpace = 28;
+  const topSpace = 34;
+  const bottomSpace = 32;
+
+  const availableW = Math.max(60, width - leftSpace - rightSpace);
+  const availableH = Math.max(60, height - topSpace - bottomSpace);
+  const scale = Math.min(availableW / D, availableH / D);
+
+  const diameterPx = D * scale;
+  const cx = leftSpace + (availableW - diameterPx) / 2 + R * scale;
+  const cy = topSpace + (availableH - diameterPx) / 2 + R * scale;
+
+  const xLeft = cx - R * scale;
+  const xRight = cx + R * scale;
+  const yTop = cy - R * scale;
+  const yBottom = cy + R * scale;
+
+  const yAt = (h) => yBottom - h * scale;
+
+  // Внешний круг — условная кора.
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * scale, 0, Math.PI * 2);
+  ctx.fillStyle = COLORS.bark;
+  ctx.fill();
+  ctx.strokeStyle = COLORS.barkLight;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Внутренняя часть — древесина.
+  const barkPx = Math.max(2, result.bark * scale);
+  const innerRadius = Math.max(0, R * scale - barkPx);
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
+  ctx.fillStyle = "#c08a5c";
+  ctx.fill();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Цветные полосы досок имеют индивидуальную толщину.
+  result.boards.forEach((board, i) => {
+    const y1 = yAt(board.height);
+    const y2 = yAt(board.lowerHeight);
+
+    ctx.fillStyle = i % 2 === 0 ? "#36d39988" : "#55aaff88";
+    ctx.fillRect(
+      xLeft,
+      Math.min(y1, y2),
+      diameterPx,
+      Math.abs(y2 - y1)
+    );
+  });
+
+  ctx.restore();
+
+  // Контур круга поверх заливки.
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * scale, 0, Math.PI * 2);
+  ctx.strokeStyle = "#d5b49b";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Нижняя база.
+  ctx.beginPath();
+  ctx.moveTo(xLeft - 7, yBottom);
+  ctx.lineTo(xRight + 7, yBottom);
+  ctx.strokeStyle = COLORS.saw;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Линии распила и подписи высот.
+  result.cuts.forEach((cut) => {
+    if (cut.notExecuted || cut.height < 0 || cut.height > D) return;
+
+    const y = yAt(cut.height);
+    const halfChord = Math.sqrt(
+      Math.max(0, R * R - Math.pow(cut.height - R, 2))
+    ) * scale;
+
+    const lineLeft = cx - halfChord;
+    const lineRight = cx + halfChord;
+
+    ctx.beginPath();
+    ctx.moveTo(lineLeft, y);
+    ctx.lineTo(lineRight, y);
+    ctx.strokeStyle = cut.type === "board" ? COLORS.woodAlt : COLORS.waste;
+    ctx.lineWidth = cut.type === "board" ? 2 : 2.5;
+    ctx.setLineDash(cut.type === "board" ? [] : [5, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.moveTo(leftSpace - 5, y);
+    ctx.lineTo(lineLeft - 4, y);
+    ctx.strokeStyle = "#8fa0ae";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const labelY = Math.max(12, Math.min(height - 12, y));
+    drawText(
+      ctx,
+      fmt(fromMillimeters(cut.height), 1),
+      leftSpace - 9,
+      labelY,
+      cut.type === "board" ? COLORS.wood : COLORS.waste,
+      "right",
+      width < 420 ? 10 : 12
+    );
+  });
+
+  // Диаметр и длина.
+  const dimX = Math.min(width - 12, xRight + 13);
+
+  ctx.beginPath();
+  ctx.moveTo(dimX, yTop);
+  ctx.lineTo(dimX, yBottom);
+  ctx.moveTo(dimX - 4, yTop + 5);
+  ctx.lineTo(dimX, yTop);
+  ctx.lineTo(dimX + 4, yTop + 5);
+  ctx.moveTo(dimX - 4, yBottom - 5);
+  ctx.lineTo(dimX, yBottom);
+  ctx.lineTo(dimX + 4, yBottom - 5);
+  ctx.strokeStyle = COLORS.dimension;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  drawText(ctx, `Ø ${fmt(fromMillimeters(D), 2)} ${unitSuffix()}`,
+    cx, Math.max(13, yTop - 15), COLORS.dimension, "center", 12);
+
+  drawText(ctx, `${fmt(result.length, 2)} м`,
+    cx, Math.min(height - 12, yBottom + 16), COLORS.muted, "center", 11);
+}
+
+/* ============================================================
+   LocalStorage: история расчётов
+   ============================================================ */
+
+function readHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Не удалось прочитать историю:", error);
+    return [];
+  }
+}
+
+function writeHistory(items) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+    return true;
+  } catch (error) {
+    console.error("Не удалось сохранить историю:", error);
+    showNotice(
+      "Браузер не позволил сохранить историю. Проверьте настройки хранения данных."
+    );
+    return false;
+  }
+}
+
+function makeSignature(values) {
+  return JSON.stringify({
+    ...values,
+    unit: currentUnit
+  });
+}
+
+function saveCurrentCalculation() {
+  if (!lastResult || !lastValues) {
+    showError("Сначала выполните расчёт.");
+    return;
+  }
+
+  const signature = makeSignature(lastValues);
+
+  if (signature === lastSavedSignature) {
+    showNotice("Этот расчёт уже сохранён в истории.");
+    return;
+  }
+
+  const history = readHistory();
+
+  const entry = {
+    id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: new Date().toISOString(),
+    unit: currentUnit,
+    values: lastValues,
+    result: lastResult
+  };
+
+  history.unshift(entry);
+
+  if (history.length > HISTORY_LIMIT) {
+    history.length = HISTORY_LIMIT;
+  }
+
+  if (writeHistory(history)) {
+    lastSavedSignature = signature;
+    renderHistory();
+    showNotice("Расчёт сохранён в истории на этом устройстве.");
+  }
+}
+
+function formatDate(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Дата неизвестна";
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(date);
+}
+
+function renderHistory() {
+  const container = $("historyList");
+  container.replaceChildren();
+
+  const history = readHistory();
+
+  if (history.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty-history";
+    empty.textContent = "Сохранённых расчётов пока нет.";
+    container.appendChild(empty);
+    return;
+  }
+
+  history.forEach((entry) => {
+    const item = document.createElement("div");
+    item.className = "history-item";
+
+    const top = document.createElement("div");
+    top.className = "history-item-top";
+
+    const info = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent =
+      `Ø ${fmt(entry.values.diameter, 2)} ${entry.unit === "in" ? "дюйм" : "мм"} · ${fmt(entry.values.logLength, 2)} м`;
+
+    const details = document.createElement("small");
+    details.textContent =
+      `${formatDate(entry.createdAt)} · ${entry.result.boards.length} досок · ${fmt(entry.result.usefulVolume, 4)} м³`;
+
+    info.append(title, details);
+    top.appendChild(info);
+    item.appendChild(top);
+
+    const actions = document.createElement("div");
+    actions.className = "history-actions";
+
+    const restore = document.createElement("button");
+    restore.type = "button";
+    restore.textContent = "Восстановить";
+    restore.addEventListener("click", () => restoreHistoryEntry(entry.id));
+
+    const exportButton = document.createElement("button");
+    exportButton.type = "button";
+    exportButton.textContent = "Открыть план для PDF";
+    exportButton.addEventListener("click", () => {
+      restoreHistoryEntry(entry.id);
+      window.setTimeout(() => window.print(), 100);
+    });
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "danger-button";
+    remove.textContent = "Удалить";
+    remove.addEventListener("click", () => deleteHistoryEntry(entry.id));
+
+    actions.append(restore, exportButton, remove);
+    item.appendChild(actions);
+    container.appendChild(item);
+  });
+}
+
+function restoreHistoryEntry(id) {
+  const entry = readHistory().find((item) => item.id === id);
+  if (!entry) {
+    showError("Не удалось найти этот расчёт в истории.");
+    return;
+  }
+
+  currentUnit = entry.unit === "in" ? "in" : "mm";
+  updateUnitButtons();
+
+  const v = entry.values;
+
+  $("diameter").value = fmtInput(v.diameter);
+  $("logLength").value = String(v.logLength);
+  $("kerf").value = fmtInput(v.kerf);
+  $("dryAllowance").value = fmtInput(v.dryAllowance);
+  $("bark").value = fmtInput(v.bark);
+  $("defaultThickness").value = fmtInput(v.defaultThickness);
+  $("boardList").value = v.boardList;
+
+  lastSavedSignature = makeSignature(v);
+  runCalculation(false);
+
+  $("calculatorForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  showNotice("Параметры расчёта восстановлены.");
+}
+
+function fmtInput(mm) {
+  const shown = fromMillimeters(mm);
+  return String(Number(shown.toFixed(5)));
+}
+
+function deleteHistoryEntry(id) {
+  const history = readHistory().filter((entry) => entry.id !== id);
+  writeHistory(history);
+  renderHistory();
+}
+
+function clearHistory() {
+  const history = readHistory();
+
+  if (history.length === 0) {
+    showNotice("История уже пуста.");
+    return;
+  }
+
+  if (!window.confirm("Удалить всю историю расчётов? Это действие нельзя отменить.")) {
+    return;
+  }
+
+  try {
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistory();
+    lastSavedSignature = "";
+    showNotice("История расчётов удалена.");
+  } catch (error) {
+    showError("Не удалось удалить историю из хранилища браузера.");
+  }
+}
+
+/* ============================================================
+   Переключение единиц измерения
+
+   Внутренние данные всегда хранятся в мм.
+   При смене единиц текущие значения конвертируются для показа.
+   Длина бревна остаётся в метрах.
+   ============================================================ */
+
+function updateUnitButtons() {
+  $("unitMm").classList.toggle("active", currentUnit === "mm");
+  $("unitIn").classList.toggle("active", currentUnit === "in");
+
+  document.querySelectorAll(".unit-label").forEach((label) => {
+    label.textContent = unitSuffix();
+  });
+
+  $("boardListHint").textContent =
+    `Толщина каждой доски задаётся в ${unitSuffix()}. Пример: ` +
+    (currentUnit === "mm" ? "25, 25, 40, 50, 25." : "1, 1, 1.5, 2, 1.");
+}
+
+function convertDisplayedFields(nextUnit) {
+  if (nextUnit === currentUnit) return;
+
+  const factor = nextUnit === "in" ? 1 / INCH_MM : INCH_MM;
+
+  const ids = ["diameter", "kerf", "dryAllowance", "bark", "defaultThickness"];
+
+  ids.forEach((id) => {
+    const input = $(id);
+    const value = Number(input.value);
+    if (Number.isFinite(value)) {
+      input.value = String(Number((value * factor).toFixed(5)));
+    }
+  });
+
+  const list = $("boardList").value.trim();
+
+  if (list) {
+    $("boardList").value = list
+      .split(/[;,]+/)
+      .map((part) => {
+        const value = Number(part.trim().replace(",", "."));
+        return Number.isFinite(value)
+          ? String(Number((value * factor).toFixed(5)))
+          : part.trim();
+      })
+      .join(", ");
+  }
+
+  currentUnit = nextUnit;
+  updateUnitButtons();
+  lastSavedSignature = "";
+  runCalculation(false);
+}
+
+/* ============================================================
+   Главный сценарий
+   ============================================================ */
+
+function runCalculation(saveToHistory = false) {
+  const displayed = readDisplayedValues();
+  const values = normalizeValues(displayed);
+  const error = validateValues(values);
+
+  if (error) {
+    showError(error);
+    return;
+  }
+
+  showError("");
+  showNotice("");
+
+  try {
+    const result = calculate(values);
+
+    lastValues = values;
+    lastResult = result;
+
+    renderMetrics(result);
+    renderTable(result);
+    renderCanvas(result);
+
+    if (saveToHistory) saveCurrentCalculation();
+  } catch (error) {
+    showError(error.message || "Не удалось выполнить расчёт.");
+  }
+}
+
+$("calculatorForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  runCalculation(true);
+});
+
+$("calculatorForm").addEventListener("input", () => {
+  runCalculation(false);
+});
+
+$("resetButton").addEventListener("click", () => {
+  currentUnit = "mm";
+  updateUnitButtons();
+
+  Object.entries(DEFAULTS).forEach(([key, value]) => {
+    $(key).value = String(value);
+  });
+
+  lastSavedSignature = "";
+  runCalculation(false);
+});
+
+$("unitMm").addEventListener("click", () => convertDisplayedFields("mm"));
+$("unitIn").addEventListener("click", () => convertDisplayedFields("in"));
+
+$("saveHistory").addEventListener("click", saveCurrentCalculation);
+$("refreshHistory").addEventListener("click", renderHistory);
+$("clearHistory").addEventListener("click", clearHistory);
+
+/*
+ * Экспорт PDF: используем штатный диалог печати браузера.
+ * В диалоге выберите «Сохранить как PDF».
+ * Это работает офлайн и не требует PDF-библиотек.
+ */
+$("exportPdf").addEventListener("click", () => {
+  if (!lastResult) {
+    showError("Сначала выполните расчёт.");
+    return;
+  }
+
+  showError("");
+  window.print();
+});
+
+if ("ResizeObserver" in window) {
+  const observer = new ResizeObserver(() => {
+    if (lastResult) renderCanvas(lastResult);
+  });
+  observer.observe($("cutCanvas"));
+} else {
+  window.addEventListener("resize", () => {
+    if (lastResult) renderCanvas(lastResult);
+  });
+}
+
+// Первоначальный расчёт и загрузка сохранённой истории.
+updateUnitButtons();
+renderHistory();
+runCalculation(false);
+</script>
+</body>
+</html>
